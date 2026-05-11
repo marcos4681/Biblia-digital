@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bíblia Viva</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #050B18;
+      color: #e2e8f0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+    .fade-in {
+      animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="flex justify-center min-h-screen">
+
+  <!-- Container Principal Mobile -->
+  <div class="w-full max-w-md bg-[#050B18] min-h-screen shadow-2xl shadow-[#C5A059]/10 overflow-hidden flex flex-col relative">
+    
+    <!-- Área de Conteúdo Renderizada pelo JS -->
+    <div id="app-root" class="flex-1 overflow-y-auto pb-20 bg-gradient-to-br from-[#050B18] via-[#050B18] to-[#0A1128]">
+      <!-- Views injetadas aqui -->
+    </div>
+
+    <!-- Navegação Inferior -->
+    <nav class="absolute bottom-0 w-full bg-[#020617] border-t border-white/10 flex justify-around items-center px-1 py-2 pb-safe z-50" id="bottom-nav">
+      <!-- Botões injetados aqui -->
+    </nav>
+
+  </div>
+
+  <script>
+    // --- DADOS DA BÍBLIA COMPACTADOS ---
+    const vtList = "Gênesis,Êxodo,Levítico,Números,Deuteronômio,Josué,Juízes,Rute,1 Samuel,2 Samuel,1 Reis,2 Reis,1 Crônicas,2 Crônicas,Esdras,Neemias,Ester,Jó,Salmos,Provérbios,Eclesiastes,Cânticos,Isaías,Jeremias,Lamentações,Ezequiel,Daniel,Oseias,Joel,Amós,Obadias,Jonas,Miqueias,Naum,Habacuque,Sofonias,Ageu,Zacarias,Malaquias".split(",");
+    const ntList = "Mateus,Marcos,Lucas,João,Atos,Romanos,1 Coríntios,2 Coríntios,Gálatas,Efésios,Filipenses,Colossenses,1 Tes,2 Tes,1 Timóteo,2 Timóteo,Tito,Filemom,Hebreus,Tiago,1 Pedro,2 Pedro,1 João,2 João,3 João,Judas,Apocalipse".split(",");
+    
+    const bibleBooks = [
+      ...vtList.map(n => ({ id: n.toLowerCase().replace(/ /g, '-'), name: n, test: 'vt' })),
+      ...ntList.map(n => ({ id: n.toLowerCase().replace(/ /g, '-'), name: n, test: 'nt' }))
+    ];
+
+    const mockVerses = [
+      "O Senhor é o meu pastor, nada me faltará.",
+      "Ele me faz repousar em pastos verdejantes. Leva-me para junto das águas de descanso;",
+      "Refrigera-me a alma. Guia-me pelas veredas da justiça por amor do seu nome.",
+      "Ainda que eu ande pelo vale da sombra da morte, não temerei mal nenhum, porque tu estás comigo; o teu bordão e o teu cajado me consolam.",
+      "Preparas-me uma mesa na presença dos meus adversários, unges-me a cabeça com óleo; o meu cálice transborda.",
+      "Bondade e misericórdia certamente me seguirão todos os dias da minha vida; e habitarei na Casa do Senhor para todo o sempre."
+    ];
+
+    // --- ESTADO DA APLICAÇÃO ---
+    let state = {
+      view: 'home',
+      readBook: null,
+      readChapter: null,
+      selectMode: 'book'
+    };
+
+    function setState(newState) {
+      state = { ...state, ...newState };
+      render();
+    }
+
+    // --- FUNÇÕES AUXILIARES ---
+    const icon = (name, className = "w-5 h-5") => `<i data-lucide="${name}" class="${className}"></i>`;
+
+    // --- RENDERIZAÇÃO DAS TELAS ---
+    const views = {
+      
+      // ABA: INÍCIO
+      home: () => `
+        <div class="fade-in flex flex-col min-h-full">
+          <div class="bg-[#020617] text-slate-200 pt-10 pb-8 rounded-b-[2.5rem] px-6 shadow-sm relative overflow-hidden border-b border-white/5">
+            <div class="flex justify-between items-center mb-6 relative z-10">
+              <div>
+                <h1 class="text-2xl font-bold font-serif tracking-wide">Bíblia <span class="text-[#C5A059]">Viva</span></h1>
+                <p class="text-white/40 text-sm font-medium">Bom dia, Marcos</p>
+              </div>
+              <button class="p-2.5 bg-white/5 hover:bg-white/10 rounded-full backdrop-blur-sm transition-colors border border-white/10" onclick="setState({view: 'menu'})">
+                ${icon('settings', 'w-5 h-5 text-slate-200')}
+              </button>
+            </div>
+            <div class="bg-white/5 backdrop-blur-md rounded-3xl p-6 border border-white/10 mt-2 relative z-10 shadow-lg">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="bg-[#C5A059] w-1.5 h-5 rounded-full"></div>
+                <h2 class="text-[10px] uppercase tracking-[0.2em] font-bold text-[#C5A059]">Versículo do Dia</h2>
+              </div>
+              <p class="font-serif text-[1.1rem] leading-relaxed mb-5 text-slate-200 italic">"Entrega o teu caminho ao Senhor; confia nele, e ele o fará."</p>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-white/50 font-serif tracking-wide">Salmos 37:5</span>
+                <button onclick="setState({view: 'read', readBook: 'salmos', readChapter: 37, selectMode: 'chapter'})" class="flex items-center gap-1 text-xs bg-[#C5A059] text-slate-950 px-4 py-2 rounded-full font-bold shadow-sm hover:opacity-90 transition-opacity">
+                  Ler agora ${icon('chevron-right', 'w-3.5 h-3.5')}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 space-y-6 flex-1">
+            <div class="grid grid-cols-2 gap-4">
+              <button onclick="setState({view: 'read', readBook: 'joão', readChapter: 3})" class="flex flex-col items-center justify-center bg-white/5 p-5 rounded-[2rem] shadow-sm border border-white/10 hover:border-[#C5A059]/30 transition-all active:scale-[0.98]">
+                <div class="w-12 h-12 bg-white/5 text-[#C5A059] rounded-2xl flex items-center justify-center mb-3">${icon('book-open', 'w-5 h-5')}</div>
+                <span class="font-bold text-slate-200 text-sm">Ler Bíblia</span>
+              </button>
+              <button onclick="setState({view: 'plans'})" class="flex flex-col items-center justify-center bg-white/5 p-5 rounded-[2rem] shadow-sm border border-white/10 hover:border-[#C5A059]/30 transition-all active:scale-[0.98]">
+                <div class="w-12 h-12 bg-white/5 text-[#C5A059] rounded-2xl flex items-center justify-center mb-3">${icon('calendar', 'w-5 h-5')}</div>
+                <span class="font-bold text-slate-200 text-sm">Planos</span>
+              </button>
+              <button onclick="setState({view: 'search'})" class="flex flex-col items-center justify-center bg-white/5 p-5 rounded-[2rem] shadow-sm border border-white/10 hover:border-[#C5A059]/30 transition-all active:scale-[0.98]">
+                <div class="w-12 h-12 bg-white/5 text-white/60 rounded-2xl flex items-center justify-center mb-3">${icon('search', 'w-5 h-5')}</div>
+                <span class="font-bold text-slate-200 text-sm">Buscar</span>
+              </button>
+              <button onclick="setState({view: 'menu'})" class="flex flex-col items-center justify-center bg-white/5 p-5 rounded-[2rem] shadow-sm border border-white/10 hover:border-[#C5A059]/30 transition-all active:scale-[0.98]">
+                <div class="w-12 h-12 bg-white/5 text-white/60 rounded-2xl flex items-center justify-center mb-3">${icon('bookmark', 'w-5 h-5')}</div>
+                <span class="font-bold text-slate-200 text-sm">Favoritos</span>
+              </button>
+            </div>
+            
+            <div class="bg-gradient-to-r from-amber-900/40 to-amber-800/20 rounded-3xl p-6 text-slate-200 shadow-md border border-amber-600/30">
+              <div class="flex items-center space-x-3 mb-2">
+                ${icon('search', 'w-5 h-5 text-[#C5A059]')}
+                <span class="text-sm font-bold uppercase tracking-widest text-[#C5A059]">Premium</span>
+              </div>
+              <p class="text-xs leading-relaxed text-white/80">Acesse mapas interativos, dicionários e genealogias completas.</p>
+            </div>
+            
+            <div class="bg-[#020617] rounded-3xl p-6 border border-white/5 shadow-xl">
+              <h3 class="text-sm uppercase tracking-widest text-[#C5A059] mb-4 font-bold">Minha Igreja</h3>
+              <div class="bg-white/5 rounded-2xl p-4 border border-white/10 hover:border-[#C5A059]/50 transition-colors cursor-pointer" onclick="setState({view: 'church'})">
+                <div class="flex gap-4 items-center">
+                  <div class="w-16 h-16 rounded-xl flex items-center justify-center text-white/40 overflow-hidden bg-white/5 border border-white/10 shrink-0">
+                     <img src="https://picsum.photos/seed/church/100/100" class="w-full h-full object-cover opacity-80" />
+                  </div>
+                  <div class="flex-1">
+                    <span class="text-[10px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Ao vivo
+                    </span>
+                    <h4 class="font-bold text-slate-200 leading-tight mt-0.5 text-sm">Culto de Celebração</h4>
+                    <p class="text-xs text-white/40 mt-1 font-medium">Hoje às 19:30 • Templo Central</p>
+                  </div>
+                  ${icon('chevron-right', 'text-white/20')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+
+      // ABA: LEITURA
+      read: () => {
+        const bookName = bibleBooks.find(b => b.id === state.readBook)?.name || '';
+
+        // VISUALIZAÇÃO DO CAPÍTULO LIDO
+        if (state.readBook && state.readChapter) {
+          return `
+            <div class="fade-in flex flex-col min-h-full bg-transparent pb-10">
+              <div class="sticky top-0 bg-[#020617]/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex justify-between items-center z-10 shadow-sm">
+                <button onclick="setState({readChapter: null, selectMode: 'chapter'})" class="flex items-center gap-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors active:scale-95">
+                  ${icon('chevron-left', 'w-4 h-4')} ${bookName} ${state.readChapter}
+                </button>
+                <div class="flex gap-2 text-white/50">
+                  <button class="p-2 hover:bg-white/5 rounded-full transition-colors">${icon('search')}</button>
+                  <button class="p-2 hover:bg-white/5 rounded-full transition-colors">${icon('settings')}</button>
+                </div>
+              </div>
+              <div class="p-6">
+                <h1 class="font-serif text-3xl font-bold text-[#C5A059] mb-10 text-center uppercase tracking-widest">${bookName} ${state.readChapter}</h1>
+                <div class="space-y-5">
+                  ${mockVerses.map((verse, idx) => `
+                    <div class="flex gap-3 group cursor-pointer selection:bg-[#C5A059]/30">
+                      <span class="text-xs font-bold text-[#C5A059] mt-1.5 min-w-[1.2rem] opacity-70 group-hover:opacity-100 transition-opacity">${idx + 1}</span>
+                      <p class="font-serif text-[1.15rem] leading-[1.8] text-slate-200 group-hover:bg-white/5 rounded-lg -ml-2 p-2 -mt-2 transition-colors">${verse}</p>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        // TELA DE SELEÇÃO DE LIVRO / CAPÍTULO
+        const renderBooks = (test) => bibleBooks.filter(b => b.test === test).map(b => `
+          <button onclick="setState({readBook: '${b.id}', selectMode: 'chapter'})" 
+            class="text-left px-4 py-3 border rounded-2xl text-sm font-bold transition-all active:scale-95 ${state.readBook === b.id ? 'bg-[#C5A059]/20 border-[#C5A059] text-[#C5A059] shadow-sm' : 'bg-white/5 border-white/10 text-slate-200 hover:border-white/30 hover:bg-white/10'}">
+            ${b.name}
+          </button>
+        `).join('');
+
+        const renderChapters = () => Array.from({length: 30}).map((_, i) => `
+          <button onclick="setState({readChapter: ${i+1}})" 
+            class="aspect-square flex items-center justify-center bg-white/5 border border-white/10 hover:bg-[#C5A059]/20 hover:border-[#C5A059] hover:text-[#C5A059] rounded-2xl text-lg font-bold text-slate-200 transition-all active:scale-90">
+            ${i+1}
+          </button>
+        `).join('');
+
+        return `
+          <div class="fade-in flex flex-col min-h-full bg-transparent">
+            <div class="sticky top-0 bg-[#020617] border-b border-white/10 px-4 pt-10 pb-4 z-10">
+               <h1 class="text-2xl font-bold text-[#C5A059] font-serif text-center mb-6">A Bíblia</h1>
+               <div class="flex bg-white/5 border border-white/10 rounded-xl p-1.5 shadow-inner">
+                 <button class="flex-1 py-2 text-sm font-bold rounded-lg transition-all ${state.selectMode === 'book' ? 'bg-[#C5A059] shadow-sm text-slate-950' : 'text-white/50 hover:text-white/80'}" onclick="setState({selectMode: 'book'})">Livros</button>
+                 <button class="flex-1 py-2 text-sm font-bold rounded-lg transition-all ${state.selectMode === 'chapter' ? 'bg-[#C5A059] shadow-sm text-slate-950' : 'text-white/50 hover:text-white/80'}" onclick="setState({selectMode: 'chapter'})" ${!state.readBook ? 'disabled' : ''}>Capítulos</button>
+               </div>
+            </div>
+            <div class="p-4 pb-12 overflow-y-auto">
+              ${state.selectMode === 'book' ? `
+                <div class="space-y-8">
+                  <div>
+                    <h3 class="text-[10px] font-bold text-[#C5A059] uppercase tracking-widest mb-3 px-2 flex items-center gap-2">Antigo Testamento <div class="h-px bg-white/10 flex-1"></div></h3>
+                    <div class="grid grid-cols-2 gap-3">${renderBooks('vt')}</div>
+                  </div>
+                  <div>
+                    <h3 class="text-[10px] font-bold text-[#C5A059] uppercase tracking-widest mb-3 px-2 flex items-center gap-2">Novo Testamento <div class="h-px bg-white/10 flex-1"></div></h3>
+                    <div class="grid grid-cols-2 gap-3">${renderBooks('nt')}</div>
+                  </div>
+                </div>
+              ` : `
+                <div>
+                  <h3 class="text-[10px] font-bold text-[#C5A059] uppercase tracking-widest mb-4 px-2 text-center text-lg">${bookName}</h3>
+                  <div class="grid grid-cols-5 gap-2">${renderChapters()}</div>
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+      },
+
+      // ABA: BUSCA
+      search: () => `
+        <div class="fade-in p-6 h-full bg-transparent pt-10">
+          <h1 class="text-3xl font-bold text-[#C5A059] font-serif mb-6 tracking-wide">Busca</h1>
+          <div class="relative mb-8">
+            <div class="absolute left-4 top-3.5 text-white/40">${icon('search')}</div>
+            <input type="text" placeholder="Lâmpada para os meus pés..." class="w-full bg-white/5 text-slate-200 rounded-full py-3.5 pl-12 pr-4 outline-none border border-white/10 focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] transition-all font-medium placeholder:text-white/20" />
+          </div>
+          <div>
+            <h3 class="text-xs font-bold text-[#C5A059] uppercase tracking-tighter mb-4">Temas Populares</h3>
+            <div class="flex flex-wrap gap-2.5">
+              ${['Amor', 'Paz', 'Amizade', 'Ansiedade', 'Fé', 'Perdão', 'Cura'].map(t => 
+                `<span class="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-full text-sm font-bold cursor-pointer transition-colors">${t}</span>`
+              ).join('')}
+            </div>
+          </div>
+          <div class="mt-8">
+            <h3 class="text-xs font-bold text-[#C5A059] uppercase tracking-tighter mb-4">Passagens Frequentes</h3>
+            <div class="space-y-3">
+               <button onclick="setState({view: 'read', readBook: 'salmos', readChapter: 23, selectMode: 'chapter'})" class="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-[#C5A059]/50 transition-colors">
+                  <span class="font-bold text-slate-200">Salmos 23</span>
+                  ${icon('chevron-right', 'text-white/20')}
+               </button>
+               <button onclick="setState({view: 'read', readBook: 'joão', readChapter: 3, selectMode: 'chapter'})" class="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-[#C5A059]/50 transition-colors">
+                  <span class="font-bold text-slate-200">João 3</span>
+                  ${icon('chevron-right', 'text-white/20')}
+               </button>
+            </div>
+          </div>
+        </div>
+      `,
+
+      // ABA: PLANOS
+      plans: () => `
+        <div class="fade-in p-6 h-full bg-transparent pt-10">
+          <h1 class="text-3xl font-bold text-[#C5A059] font-serif mb-6 tracking-wide">Planos</h1>
+          <div class="space-y-6">
+            <div class="bg-[#020617] rounded-[2rem] p-6 shadow-xl border border-white/5 relative overflow-hidden">
+              <div class="absolute top-0 right-0 w-32 h-32 bg-[#C5A059]/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+              <span class="text-[10px] font-bold text-[#C5A059] uppercase tracking-tighter mb-2 block relative z-10">Em Andamento</span>
+              <h3 class="font-bold text-xl text-slate-200 mb-1 relative z-10">A Bíblia em 1 Ano</h3>
+              <p class="text-sm text-white/50 mb-5 relative z-10 font-medium">Dia 45 de 365</p>
+              <div class="w-full bg-white/5 rounded-full h-2.5 mb-6 relative z-10">
+                <div class="bg-[#C5A059] h-full rounded-full w-[12%]"></div>
+              </div>
+              <button class="w-full bg-white/5 text-slate-200 font-bold py-3.5 rounded-2xl border border-white/10 hover:border-[#C5A059]/50 transition-colors shadow-sm relative z-10 hover:bg-white/10 active:scale-95">Ler Gênesis 46-48</button>
+            </div>
+            <div>
+              <h3 class="font-bold text-white/80 mb-4 px-1">Descubra novos planos</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white/5 border border-white/10 p-5 rounded-[2rem] shadow-sm hover:border-[#C5A059]/30 hover:bg-white/10 transition-all cursor-pointer">
+                   <div class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-[#C5A059] mb-4">${icon('calendar')}</div>
+                   <h4 class="font-bold text-slate-200 leading-tight">Caminho da Paz</h4>
+                   <p class="text-[11px] font-medium text-white/40 mt-1 mb-4">7 Dias • Devocional</p>
+                   <span class="text-[#C5A059] font-bold text-sm bg-[#C5A059]/10 px-3 py-1.5 rounded-lg border border-[#C5A059]/20">Começar</span>
+                </div>
+                <div class="bg-white/5 border border-white/10 p-5 rounded-[2rem] shadow-sm hover:border-[#C5A059]/30 hover:bg-white/10 transition-all cursor-pointer">
+                   <div class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-[#C5A059] mb-4">${icon('book-open')}</div>
+                   <h4 class="font-bold text-slate-200 leading-tight">Provérbios</h4>
+                   <p class="text-[11px] font-medium text-white/40 mt-1 mb-4">31 Dias • Sabedoria</p>
+                   <span class="text-[#C5A059] font-bold text-sm bg-[#C5A059]/10 px-3 py-1.5 rounded-lg border border-[#C5A059]/20">Começar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+
+      // ABA: IGREJA
+      church: () => `
+        <div class="fade-in h-full bg-transparent flex flex-col">
+           <div class="h-56 relative shrink-0 border-b border-white/10">
+             <img src="https://picsum.photos/seed/igreja2/600/400" class="w-full h-full object-cover" />
+             <div class="absolute inset-0 bg-gradient-to-t from-[#050B18] via-[#050B18]/60 to-transparent flex flex-col justify-end p-6">
+               <div class="text-white">
+                 <span class="bg-[#C5A059] text-[10px] font-bold px-2 py-0.5 rounded text-[#050B18] uppercase tracking-tighter">Membro</span>
+                 <h1 class="text-2xl font-bold font-serif mt-2 tracking-wide text-slate-200">Igreja Batista Fonte</h1>
+                 <p class="text-sm text-white/60 mt-0.5 font-medium">São Paulo, SP</p>
+               </div>
+             </div>
+           </div>
+           <div class="p-6 space-y-6 flex-1 bg-transparent rounded-t-3xl relative z-10">
+             <div class="bg-gradient-to-r from-red-900/50 to-red-800/30 border border-red-500/20 rounded-3xl p-5 flex gap-4 items-center text-white shadow-lg backdrop-blur-sm">
+                <div class="w-12 h-12 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center shrink-0 border border-red-500/30">${icon('play', 'ml-1')}</div>
+                <div>
+                  <span class="uppercase text-[10px] font-bold tracking-tighter text-red-400 block mb-0.5 animate-pulse">Ao Vivo</span>
+                  <h3 class="font-bold text-slate-200">Culto de Domingo</h3>
+                </div>
+             </div>
+             <div>
+               <div class="flex justify-between items-center mb-4 px-1">
+                 <h3 class="font-bold text-white/80">Recursos da Célula</h3>
+                 <span class="text-[10px] font-bold uppercase tracking-widest text-[#C5A059]">Ver todas</span>
+               </div>
+               <div class="bg-white/5 rounded-[2rem] p-5 border border-white/10 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#C5A059]/30 transition-colors">
+                  <div>
+                    <h4 class="font-bold text-slate-200">Estudo da Semana</h4>
+                    <p class="text-xs text-white/40 font-medium mt-0.5">A videira verdadeira (João 15)</p>
+                  </div>
+                  <button class="w-10 h-10 bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-[#C5A059] hover:bg-white/10 transition-colors">${icon('book-open', 'w-4 h-4')}</button>
+               </div>
+             </div>
+             <div>
+                <h3 class="font-bold text-white/80 mb-4 px-1">Próximos Eventos</h3>
+                <div class="space-y-3">
+                  ${[
+                    { d: '15 Mar', t: 'Encontro de Jovens', tm: '19:30', c1: 'text-blue-400' },
+                    { d: '22 Mar', t: 'Culto de Missões', tm: '19:00', c1: 'text-[#C5A059]' }
+                  ].map(e => `
+                    <div class="flex gap-4 p-4 bg-white/5 border border-white/10 rounded-[2rem] items-center cursor-pointer hover:border-[#C5A059]/30 transition-colors shadow-sm">
+                       <div class="bg-white/5 border border-white/10 rounded-2xl p-3 text-center min-w-[4rem]">
+                         <span class="block text-[10px] font-bold ${e.c1} uppercase tracking-tighter">${e.d.split(' ')[1]}</span>
+                         <span class="block font-bold text-xl text-slate-200 -mt-0.5">${e.d.split(' ')[0]}</span>
+                       </div>
+                       <div>
+                         <h4 class="font-bold text-slate-200">${e.t}</h4>
+                         <p class="text-xs text-white/40 font-medium flex items-center gap-1 mt-0.5">${icon('calendar', 'w-3 h-3')} ${e.tm}</p>
+                       </div>
+                    </div>
+                  `).join('')}
+                </div>
+             </div>
+           </div>
+        </div>
+      `,
+
+      // ABA: MENU
+      menu: () => `
+        <div class="fade-in p-6 pt-10 bg-transparent min-h-full">
+          <h1 class="text-3xl font-bold text-[#C5A059] font-serif mb-6 tracking-wide">Menu</h1>
+          <div class="space-y-6">
+            <div class="bg-[#020617] rounded-[2rem] p-5 shadow-xl border border-white/5 flex items-center gap-4 relative overflow-hidden">
+               <div class="absolute inset-0 bg-[#C5A059]/5"></div>
+               <div class="w-16 h-16 bg-[#C5A059]/20 border border-[#C5A059]/30 font-bold text-[#C5A059] rounded-full flex items-center justify-center text-2xl relative z-10 shadow-inner">M</div>
+               <div class="relative z-10">
+                 <h3 class="font-bold text-lg text-slate-200">Marcos</h3>
+                 <p class="text-xs font-medium text-white/50">marcos@exemplo.com</p>
+               </div>
+            </div>
+
+            <div class="bg-white/5 rounded-[2rem] overflow-hidden border border-white/10 shadow-sm">
+               ${menuItem('bookmark', 'Favoritos')}
+               <div class="h-px bg-white/5 ml-14"></div>
+               ${menuItem('book-open', 'Minhas Anotações')}
+               <div class="h-px bg-white/5 ml-14"></div>
+               ${menuItem('search', 'Dicionário Bíblico')}
+            </div>
+
+            <div class="bg-white/5 rounded-[2rem] overflow-hidden border border-white/10 shadow-sm">
+               ${menuItem('sun', 'Tema', 'Escuro', 'text-[#C5A059]')}
+               <div class="h-px bg-white/5 ml-14"></div>
+               ${menuItem('settings', 'Configurações')}
+            </div>
+            
+            <button class="w-full py-4 text-red-400 font-bold bg-white/5 rounded-[2rem] border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 transition-colors shadow-sm active:scale-95">
+              Sair do Aplicativo
+            </button>
+          </div>
+        </div>
+      `
+    };
+
+    const menuItem = (icn, label, value = '', icnCls = 'text-white/40') => `
+      <button class="w-full flex items-center justify-between p-5 hover:bg-white/10 transition-colors focus:bg-white/5 text-left">
+        <div class="flex items-center gap-4 text-slate-200">
+          <div class="${icnCls}">${icon(icn)}</div>
+          <span class="font-bold">${label}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          ${value ? `<span class="text-[10px] font-bold text-white/40 uppercase tracking-tighter">${value}</span>` : ''}
+          ${icon('chevron-right', 'w-4 h-4 text-white/20')}
+        </div>
+      </button>
+    `;
+
+    // --- FUNÇÃO DE RENDERIZAÇÃO GERAL ---
+    function render() {
+      // 1. Injetar a view do conteúdo principal
+      document.getElementById('app-root').innerHTML = views[state.view]();
+      
+      // 2. Renderizar navegação inferior
+      const tabs = [
+        { id: 'home', icn: 'home', label: 'Início' },
+        { id: 'read', icn: 'book-open', label: 'Bíblia' },
+        { id: 'search', icn: 'search', label: 'Busca' },
+        { id: 'plans', icn: 'calendar', label: 'Planos' }
+      ];
+      
+      document.getElementById('bottom-nav').innerHTML = tabs.map(t => {
+        const active = state.view === t.id;
+        return `
+          <button onclick="setState({view: '${t.id}'})" class="flex flex-col items-center justify-center w-[72px] h-12 gap-1 transition-colors relative ${active ? 'text-[#C5A059]' : 'text-white/40 hover:text-white/80'}">
+            <div class="${active ? 'scale-110 mb-0.5' : 'scale-100'} transition-transform">
+              <i data-lucide="${t.icn}" class="w-5 h-5 ${active ? 'fill-current' : ''}"></i>
+            </div>
+            <span class="${active ? 'font-bold' : 'font-medium'} text-[10px] tracking-wide">${t.label}</span>
+          </button>
+        `;
+      }).join('');
+
+      // 3. Atualizar renderização de Ícones
+      lucide.createIcons();
+    }
+
+    // Inicializa a aplicação
+    render();
+  </script>
+</body>
+</html>
